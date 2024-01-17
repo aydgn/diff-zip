@@ -37,7 +37,6 @@ const branchesArray = () => {
 };
 
 const createZip = (branch1, branch2, diff) => {
-  // Create zip file
   const archive = archiver("zip", { zlib: { level: 9 } });
   const now = new Date().getTime();
   const output = createWriteStream(`${branch1}-${branch2}-${now}.zip`);
