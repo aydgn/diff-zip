@@ -1,6 +1,6 @@
 {
   "name": "git-diff-zip",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Creates ZIP file with the difference between two git branches.",
   "type": "module",
   "main": "index.js",
