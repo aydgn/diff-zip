@@ -16,5 +16,9 @@
     "branch"
   ],
   "author": "Aydoğan Gökberk",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "inquirer": "^9.2.12",
+    "simple-git": "^3.22.0"
+  }
 }
