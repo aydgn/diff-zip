@@ -3,6 +3,7 @@
 import inquirer from "inquirer";
 import { checkGitInstalled, checkGitRepo, getBranches, createBranchesArray, getDiff } from "./src/gitUtils.js";
 import { createZip } from "./src/archiverUtils.js";
+
 // Check if git is installed
 try {
   await checkGitInstalled();
