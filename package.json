@@ -4,7 +4,9 @@
   "description": "Creates ZIP file with the difference between two git branches.",
   "type": "module",
   "main": "index.js",
-  "bin": "index.js",
+  "bin": {
+    "git-diff-zip": "index.js"
+  },
   "scripts": {
     "dev": "npx nodemon index.js"
   },
@@ -17,7 +19,13 @@
   ],
   "author": "Aydoğan Gökberk",
   "license": "ISC",
-  "repository": "github:aydgn/diff-zip",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aydgn/diff-zip.git"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
   "dependencies": {
     "archiver": "^6.0.1",
     "inquirer": "^9.2.12"
