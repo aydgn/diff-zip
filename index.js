@@ -1,64 +1,30 @@
 #!/usr/bin/env node
 
-// This CLI tools is for creating zip file from the diff of two branches
-import { execSync } from "child_process";
 import inquirer from "inquirer";
-import archiver from "archiver";
-import { createWriteStream } from "fs";
+import { checkGitInstalled, checkGitRepo, getBranches, createBranchesArray, getDiff } from "./gitUtils.js";
+import { createZip } from "./archiverUtils.js";
 
 // Check if git is installed
 try {
-  execSync("git --version");
+  await checkGitInstalled();
 } catch (error) {
-  console.log("❌ Please install git. You can download it from https://git-scm.com/downloads");
+  console.error("❌ Make sure that you installed Git. You can download it from https://git-scm.com/downloads", error);
   process.exit(1);
 }
 
 // Check if folder is a git repo
 try {
-  const isGitRepo = execSync("git rev-parse --is-inside-work-tree").toString().trim();
-
-  if (!isGitRepo) {
-    throw new Error();
-  }
+  await checkGitRepo();
 } catch (error) {
-  console.error("!!! Error on checking if folder is a git repo");
+  console.error(`❌ Make sure that the folder ${process.cwd()} is a git repo`, error);
   process.exit(1);
 }
 
 // Get all branches
-const branches = execSync("git branch -a");
-const branchesArray = () => {
-  return branches
-    .toString() // Convert buffer to string
-    .split("\n") // Split by new line
-    .map(branch => branch.replace("*", "").trim()) // Remove * and trim
-    .filter(branch => branch !== ""); // Remove empty string
-};
+const branches = await getBranches();
 
-const createZip = (branch1, branch2, diff) => {
-  const archive = archiver("zip", { zlib: { level: 9 } });
-  const now = new Date().getTime();
-  const output = createWriteStream(`${branch1}-${branch2}-${now}.zip`);
-
-  output.on("close", () => {
-    console.log(`✅ ${branch1}-${branch2}.zip created`);
-    console.log(`✅ Total bytes: ${archive.pointer()}`);
-  });
-
-  archive.on("error", err => {
-    throw err;
-  });
-
-  archive.pipe(output);
-
-  // Add files to zip
-  for (const file of diff.split("\n")) {
-    archive.file(file, { name: file });
-  }
-
-  archive.finalize();
-};
+// Create an array from branches of the git repo
+const branchesArray = createBranchesArray(branches);
 
 // Ask for two branches to compare
 inquirer
@@ -67,7 +33,7 @@ inquirer
       type: "checkbox",
       name: "branches",
       message: "Select two branches to compare",
-      choices: branchesArray(),
+      choices: branchesArray,
       validate: answer => {
         if (answer.length !== 2) {
           return "Please select ONLY 2 branches";
@@ -87,14 +53,13 @@ inquirer
           type: "confirm",
           name: "confirm",
           message: `Are you sure you want to create zip file from the diff of ${branch1} and ${branch2}?`,
+          default: true,
         },
       ])
       .then(answer => {
         if (answer.confirm) {
-          // Get diff of two branches
-          const diff = execSync(`git diff --name-only ${branch1} ${branch2}`).toString().trim();
+          const diff = getDiff(branch1, branch2).toString().trim();
 
-          // Create zip file
           createZip(branch1, branch2, diff);
         } else {
           console.log("❌ Aborted");
