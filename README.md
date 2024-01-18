@@ -44,7 +44,3 @@ After installation, run the following command in any directory:
 ```bash
 git-diff-zip
 ```
-
-## TODO
-
-- [ ] Add support for selecting branches and file names using command-line arguments.
