@@ -22,20 +22,17 @@ export const getDiff = async (branch1, branch2) => {
   const diffArgs = [...GIT_DIFF_BASE_ARGS, branch1, branch2];
   // Execute the git diff command
   const output = await executeCommand(GIT_COMMAND, diffArgs);
-  // The output is a Buffer. Convert it to a string.
   // Split the string by newline characters to get an array of filenames.
   // Filter out any empty strings that might result from an extra newline at the end of the git output.
   return output
-    .toString()
     .split("\n")
     .filter(file => file && file.trim() !== ""); // Ensure file is not null, undefined, or just whitespace
 };
 
 // Create an array of branch names from the raw output of 'git branch -a'
 export const createBranchesArray = branches => {
-  // The 'branches' input is a Buffer from the git command output.
-  // Convert buffer to string and split by new line to process each branch entry.
-  const branchLines = branches.toString().split("\n");
+  // Convert string to array by new line to process each branch entry.
+  const branchLines = branches.split("\n");
 
   return branchLines
     .map(branch => {
@@ -59,5 +56,5 @@ export const createBranchesArray = branches => {
 // Check if the working tree is clean (no uncommitted changes or untracked files)
 export const isWorkingTreeClean = async () => {
   const output = await executeCommand(GIT_COMMAND, GIT_STATUS_PORCELAIN_ARGS);
-  return output.toString().trim() === "";
+  return output === "";
 };
