@@ -128,4 +128,13 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+# Environment variables
+!.env.example
+
+# Windows thumbnail cache
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
 .DS_Store
