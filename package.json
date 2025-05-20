@@ -28,6 +28,6 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
-    "inquirer": "^12.6.1"
+    "@inquirer/prompts": "^4.2.1"
   }
 }
