@@ -21,7 +21,14 @@ DiffZip uses Git's `git diff` command to identify and extract files that have ch
 To use DiffZip, you need to have the following installed on your system:
 
 - **Git:** DiffZip relies on Git to compare and extract the changed files. You can download and install Git from [here](https://git-scm.com/downloads).
-- **Node.js:** DiffZip is written in JavaScript and runs on Node.js. You can download and install Node.js from [here](https://nodejs.org/en/download/).
+- **Node.js 20.12+:** DiffZip requires Node.js 20.12 or later. You can download and install Node.js from [here](https://nodejs.org/en/download/).
+
+### Contributing / Local Development
+
+```bash
+bun install
+node index.js
+```
 
 ## Get started in a snap
 

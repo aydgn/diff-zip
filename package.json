@@ -8,7 +8,8 @@
     "git-diff-zip": "index.js"
   },
   "scripts": {
-    "dev": "npx nodemon index.js"
+    "dev": "npx nodemon index.js",
+    "test": "node --test"
   },
   "keywords": [
     "git",
@@ -24,10 +25,10 @@
     "url": "git+https://github.com/aydgn/diff-zip.git"
   },
   "engines": {
-    "node": ">=12.0.0"
+    "node": ">=20.12.0"
   },
   "dependencies": {
     "archiver": "^7.0.1",
-    "@inquirer/prompts": "^4.2.1"
+    "@inquirer/prompts": "^8.3.2"
   }
 }
