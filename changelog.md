@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0 - 2026-07-06
+
+### Changed
+- Updated `@inquirer/prompts` to `^8.5.2` and `archiver` to `^8.0.0`.
+- Raised the Node.js engine requirement to match the upgraded prompt stack: `>=23.5.0 || ^22.13.0 || ^20.17.0`.
+- Migrated archive creation to `archiver@8`'s `ZipArchive` named export.
+
 ## 1.0.4 - 2025-05-21
 
 ### Added
