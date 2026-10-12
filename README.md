@@ -36,25 +36,17 @@ The CLI writes the ZIP to the repository root, including when invoked from a rep
 
 ## Package installation
 
-The configured package is **`@aydgn/git-diff-zip`** on **`https://npm.pkg.github.com`**; the executable remains **`git-diff-zip`**. Version 3.0.0 publication is pending authorization. These commands require the version to be published and your account to have access; they do not imply public npm availability.
-
-Configure the scope registry and authenticate using your own credentials:
+The package is **`git-diff-zip`** on public npm. Run without a global installation, from the repository to compare:
 
 ```bash
-npm config set @aydgn:registry https://npm.pkg.github.com
-npm login --scope=@aydgn --auth-type=legacy --registry=https://npm.pkg.github.com
-```
-
-Run without a global installation, from the repository to compare:
-
-```bash
-npx --package=@aydgn/git-diff-zip@3.0.0 git-diff-zip
+npx git-diff-zip
+npx git-diff-zip main GM-12345
 ```
 
 Alternatively, install globally:
 
 ```bash
-npm install -g @aydgn/git-diff-zip@3.0.0
+npm install -g git-diff-zip
 git-diff-zip
 ```
 

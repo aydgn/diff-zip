@@ -1,8 +1,8 @@
 # Changelog
 
-## 3.0.0 - Unreleased (prepared 2026-10-12)
+## 3.0.0 - 2026-10-12
 
-Publication is pending registry and release authorization. The configured package is `@aydgn/git-diff-zip` on GitHub Packages (`https://npm.pkg.github.com`); the executable remains `git-diff-zip`. No public npm availability is implied.
+Published to public npm as `git-diff-zip`.
 
 ### Breaking changes
 - Archive content now comes exclusively from resolved Target commit snapshots, never the working tree. Dirty working trees are allowed; the clean-tree guard is removed.
@@ -12,6 +12,7 @@ Publication is pending registry and release authorization. The configured packag
 - Replaced unordered two-branch checkbox selection with sequential Base → Target selection.
 
 ### Changed
+- Package identity returns to unscoped `git-diff-zip`; the release workflow now publishes to npm on `published` releases using the `NPM_TOKEN` secret, after frozen install and tests.
 - Added prompt-free `git-diff-zip BASE TARGET` (Base first) for scripts and AI coding agents, including no-TTY/piped-input use. Positional mode accepts commit refs without branch enumeration or the interactive two-branch guard; no-argument selection and confirmation remain unchanged.
 - Added standalone English `--help`/`-h`, available outside Git, covering archive/deployment constraints and agent workflow. Help/version must stand alone; unsupported flags and malformed operand counts fail with `INVALID_ARGUMENTS` before Git checks or prompts.
 - Documented explicit-ref agent execution, human stdout/stderr reports, and exit codes without adding flags, dependencies, or a dedicated Agent Skill.
@@ -21,7 +22,7 @@ Publication is pending registry and release authorization. The configured packag
 - Grouped branch choices into sorted Local and Remote sections using full-ref identities, excluded symbolic remote HEAD refs and the selected Base from Target choices, and retained the current branch as default when available.
 - Adopted Turkish Base/Target selection and confirmation prompts; retained English operational results, distinct deletion/submodule lists, and escaped control characters in displayed paths.
 - Updated `@inquirer/prompts` to `^8.7.0`, added `bun test`, and limited runtime package files to `index.js` and `src/` alongside npm-included metadata and README.
-- Updated usage and contributor documentation for snapshot semantics, registry identity, collision behavior, deployment cleanup, and known OS argument-length/in-memory ZIP limits. Windows remains unverified.
+- Updated usage and contributor documentation for snapshot semantics, package identity, collision behavior, deployment cleanup, and known OS argument-length/in-memory ZIP limits. Windows remains unverified.
 - Bounded output ZIP names by 255 UTF-8 bytes with a deterministic SHA-256 fallback (`diff-<hash>-<timestamp>.zip`).
 - Enforced fatal UTF-8 decoding for committed diff/tree paths (`INVALID_DIFF`).
 - Consistently passed `--no-replace-objects` and `--ignore-submodules=none` across commit resolution and diffs.
