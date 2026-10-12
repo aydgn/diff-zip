@@ -1,45 +1,44 @@
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
 
-// Executes a shell command using child_process.spawn for better security and stream handling.
-// Returns a Promise that resolves with the command's stdout on success,
-// or rejects with an error (including stderr and stdout for context) on failure.
-export const executeCommand = (command, args = []) => {
+export const executeCommand = (command, args = [], { cwd, encoding = "utf8", env, signal } = {}) => {
   return new Promise((resolve, reject) => {
-    // Spawn the child process.
-    const process = spawn(command, args);
-
-    let stdout = ""; // Buffer for standard output.
-    let stderr = ""; // Buffer for standard error.
-
-    // Listen for data on stdout and append it to the stdout buffer.
-    process.stdout.on("data", data => {
-      stdout += data.toString();
-    });
-
-    // Listen for data on stderr and append it to the stderr buffer.
-    process.stderr.on("data", data => {
-      stderr += data.toString();
-    });
-
-    // Listen for the 'close' event, which indicates the process has exited.
-    process.on("close", code => {
-      if (code !== 0) {
-        // If the exit code is not 0, the command failed.
-        // Create an error object with details from stderr and stdout.
-        const error = new Error(`Command failed with exit code ${code}: ${stderr.trim()}`);
-        error.stderr = stderr.trim(); // Attach stderr to the error object.
-        error.stdout = stdout.trim(); // Attach stdout to the error object for debugging context.
-        reject(error); // Reject the promise with the error.
-      } else {
-        // If the exit code is 0, the command succeeded.
-        resolve(stdout.trim()); // Resolve the promise with the trimmed stdout.
+    signal?.throwIfAborted();
+    const child = spawn(command, args, { cwd, env, signal });
+    const stdout = [];
+    const stderr = [];
+    let spawnError;
+    child.stdout.on("data", chunk => stdout.push(chunk));
+    child.stderr.on("data", chunk => stderr.push(chunk));
+    // Abort emits an error before termination; cleanup must wait for child I/O to close.
+    child.on("error", error => { spawnError = error; });
+    child.on("close", (code, terminationSignal) => {
+      if (signal?.aborted) {
+        reject(signal.reason);
+        return;
       }
-    });
-
-    // Listen for the 'error' event, which can occur if the command cannot be spawned (e.g., command not found).
-    process.on("error", err => {
-      // This typically handles errors like EACCES or ENOENT.
-      reject(err); // Reject the promise with the spawn error.
+      if (spawnError) {
+        reject(spawnError);
+        return;
+      }
+      const bytes = Buffer.concat(stdout);
+      const output = encoding === null ? bytes : bytes.toString(encoding);
+      if (code === 0) {
+        resolve(output);
+        return;
+      }
+      const message = Buffer.concat(stderr).toString("utf8");
+      const error = new Error(`Command failed with exit code ${code}${terminationSignal ? ` (${terminationSignal})` : ""}: ${message.trim()}`);
+      error.exitCode = code;
+      error.signal = terminationSignal;
+      error.stdout = output;
+      error.stderr = message;
+      reject(error);
     });
   });
+};
+
+export const codedError = (code, message, cause) => {
+  const error = new Error(message, cause ? { cause } : undefined);
+  error.code = code;
+  return error;
 };

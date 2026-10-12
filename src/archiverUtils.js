@@ -1,69 +1,102 @@
-import { ZipArchive } from "archiver";
-import { createWriteStream } from "fs";
+import { createHash } from "node:crypto";
+import { link, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { devNull } from "node:os";
+import { join } from "node:path";
+import { executeCommand, codedError } from "./utils.js";
 
-// https://www.archiverjs.com/docs/quickstart#examples
+export const buildZipName = (base, target, date) => {
+  const name = ref => ref.replace(/^refs\/(?:heads|remotes)\//, "").replace(/[\/\\]/g, "_");
+  const pad = value => String(value).padStart(2, "0");
+  const timestamp = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
+  const basename = `${name(base)}-to-${name(target)}-${timestamp}.zip`;
+  if (Buffer.byteLength(basename, "utf8") <= 255) return basename;
+  const digest = createHash("sha256").update(base).update("\0").update(target).digest("hex").slice(0, 16);
+  return `diff-${digest}-${timestamp}.zip`;
+};
 
-export const createZip = (branch1, branch2, diff) => {
-  // This function returns a Promise that resolves with the zip file name upon successful creation,
-  // or rejects if an error occurs during the process.
-  return new Promise((resolve, reject) => {
-    // Initialize the zip archive with maximum compression.
-    const archive = new ZipArchive({ zlib: { level: 9 } });
-
-    // Generate a unique zip file name using branch names and the current timestamp.
-    const now = new Date().getTime();
-    // Sanitize branch names for use in the filename
-    const [sanitizedBranch1, sanitizedBranch2] = [branch1, branch2].map(name => name.replace(/\//g, "_"));
-    const zipFileName = `${sanitizedBranch1}-${sanitizedBranch2}-${now}.zip`;
-    // Create a writable stream to the output zip file.
-    const output = createWriteStream(zipFileName);
-
-    // Event listener for when the output stream has finished writing all data.
-    // This signifies that the zip file has been successfully created.
-    output.on("close", () => {
-      console.log(`✅ ${zipFileName} created`);
-      console.log(`✅ Total bytes: ${archive.pointer()}`); // Logs the total size of the archive.
-      resolve(zipFileName); // Resolve the promise with the name of the created zip file.
-    });
-
-    // Event listener for errors on the archiver instance.
-    // If an error occurs during archiving (e.g., issues with adding files), reject the promise.
-    archive.on("error", err => {
-      reject(err);
-    });
-
-    // Event listener for errors on the output stream.
-    // If an error occurs while writing to the file (e.g., disk full), reject the promise.
-    output.on("error", err => {
-      reject(err);
-    });
-
-    // Event listener for warnings from the archiver.
-    // Specifically handles 'ENOENT' (file not found) warnings by logging them.
-    // Other warnings will cause the promise to reject.
-    archive.on("warning", err => {
-      if (err.code === "ENOENT") {
-        console.warn(`⚠️ Warning (ENOENT): ${err.message} - This file will be skipped.`);
-      } else {
-        reject(err); // For other warnings, treat them as errors.
-      }
-    });
-
-    // Pipe the archive data to the output file stream.
-    archive.pipe(output);
-
-    // The 'diff' parameter is an array of filenames.
-    // Filter out any empty strings from the list of files to prevent errors.
-    const filesToArchive = diff.filter(fileName => fileName && fileName.trim() !== "");
-
-    // Iterate over the valid file names and add each one to the archive.
-    // The 'name' option in archive.file() specifies the path of the file within the zip.
-    for (const file of filesToArchive) {
-      archive.file(file, { name: file });
+const archiveEntries = bytes => {
+  const invalid = () => codedError("ARCHIVE_MISMATCH", "Git produced an invalid ZIP directory.");
+  let end = -1;
+  for (let offset = bytes.length - 22; offset >= Math.max(0, bytes.length - 65557); offset--) {
+    if (bytes.readUInt32LE(offset) === 0x06054b50 && offset + 22 + bytes.readUInt16LE(offset + 20) === bytes.length) {
+      end = offset;
+      break;
     }
+  }
+  if (end < 0) throw invalid();
+  let count = bytes.readUInt16LE(end + 10);
+  let directory = bytes.readUInt32LE(end + 16);
+  if (count === 0xffff || directory === 0xffffffff) {
+    if (end < 20 || bytes.readUInt32LE(end - 20) !== 0x07064b50) throw invalid();
+    const zip64 = Number(bytes.readBigUInt64LE(end - 12));
+    if (!Number.isSafeInteger(zip64) || zip64 + 56 > bytes.length || bytes.readUInt32LE(zip64) !== 0x06064b50) throw invalid();
+    count = Number(bytes.readBigUInt64LE(zip64 + 32));
+    directory = Number(bytes.readBigUInt64LE(zip64 + 48));
+  }
+  if (!Number.isSafeInteger(count) || !Number.isSafeInteger(directory)) throw invalid();
+  const files = [];
+  for (let index = 0; index < count; index++) {
+    if (directory + 46 > end || bytes.readUInt32LE(directory) !== 0x02014b50) throw invalid();
+    const length = bytes.readUInt16LE(directory + 28);
+    const next = directory + 46 + length + bytes.readUInt16LE(directory + 30) + bytes.readUInt16LE(directory + 32);
+    if (next > end) throw invalid();
+    const path = bytes.toString("utf8", directory + 46, directory + 46 + length);
+    if (!path.endsWith("/")) files.push(path);
+    directory = next;
+  }
+  return files;
+};
 
-    // Finalize the archive. This closes the archive and writes any remaining data.
-    // No more files can be added after this point.
-    archive.finalize();
-  });
+export const archiveCommittedFiles = async ({ commit, paths, cwd, outDir, name, signal }) => {
+  signal?.throwIfAborted();
+  const zipPath = join(outDir, name);
+  let temporary;
+  try {
+    let bytes;
+    try {
+      temporary = await mkdtemp(join(outDir, ".diff-zip-"));
+      signal?.throwIfAborted();
+      const repository = join(temporary, "repository.git");
+      const objects = await executeCommand("git", ["rev-parse", "--path-format=absolute", "--git-path", "objects"], { cwd, signal });
+      const format = await executeCommand("git", ["rev-parse", "--show-object-format"], { cwd, signal });
+      const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+      env.GIT_CONFIG_NOSYSTEM = "1";
+      env.GIT_CONFIG_GLOBAL = devNull;
+      env.GIT_ATTR_NOSYSTEM = "1";
+      await executeCommand("git", ["init", "--bare", "--template=", `--object-format=${format.trim()}`, repository], { cwd: temporary, env, signal });
+      signal?.throwIfAborted();
+      await mkdir(join(repository, "info"), { recursive: true });
+      signal?.throwIfAborted();
+      // Keep committed export-ignore, but archive original blobs without $Format$ substitutions.
+      await writeFile(join(repository, "info", "attributes"), "* -export-subst\n", { flag: "wx", signal });
+      signal?.throwIfAborted();
+      env.GIT_ALTERNATE_OBJECT_DIRECTORIES = JSON.stringify(objects.replace(/\r?\n$/, ""));
+      // Only objects are shared: source config, index, worktree and info attributes are isolated.
+      bytes = await executeCommand("git", ["--git-dir", repository, "-c", `core.attributesFile=${devNull}`, "--literal-pathspecs", "archive", "--format=zip", "-9", commit, "--", ...paths], { cwd: temporary, env, encoding: null, signal });
+    } catch (cause) {
+      if (signal?.aborted) throw signal.reason;
+      throw codedError("ARCHIVE_FAILED", "Could not archive the Target commit.", cause);
+    }
+    signal?.throwIfAborted();
+    const expected = new Set(paths);
+    const entries = archiveEntries(bytes);
+    if (entries.length !== expected.size || entries.some(path => !expected.delete(path)) || expected.size) {
+      throw codedError("ARCHIVE_MISMATCH", "ZIP entries do not match changed Target files; export-ignore may have excluded files.");
+    }
+    try {
+      signal?.throwIfAborted();
+      const file = join(temporary, "archive.zip");
+      await writeFile(file, bytes, { flag: "wx", signal });
+      signal?.throwIfAborted();
+      // A hard link publishes the complete archive atomically and never replaces an existing file.
+      await link(file, zipPath);
+      return zipPath;
+    } catch (cause) {
+      if (signal?.aborted) throw signal.reason;
+      if (cause.code === "EEXIST") throw codedError("OUTPUT_EXISTS", `Output already exists: ${zipPath}`, cause);
+      throw codedError("ARCHIVE_FAILED", `Could not write archive: ${zipPath}`, cause);
+    }
+  } finally {
+    if (temporary) await rm(temporary, { recursive: true, force: true });
+  }
 };

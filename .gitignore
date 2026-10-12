@@ -141,3 +141,6 @@ Thumbs.db
 
 # Git worktrees
 .worktrees/
+
+conductor/
+docs/
