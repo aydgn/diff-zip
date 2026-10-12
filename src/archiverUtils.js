@@ -1,4 +1,4 @@
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 import { createWriteStream } from "fs";
 
 // https://www.archiverjs.com/docs/quickstart#examples
@@ -7,8 +7,8 @@ export const createZip = (branch1, branch2, diff) => {
   // This function returns a Promise that resolves with the zip file name upon successful creation,
   // or rejects if an error occurs during the process.
   return new Promise((resolve, reject) => {
-    // Initialize archiver with 'zip' format and set compression level to maximum (9).
-    const archive = archiver("zip", { zlib: { level: 9 } });
+    // Initialize the zip archive with maximum compression.
+    const archive = new ZipArchive({ zlib: { level: 9 } });
 
     // Generate a unique zip file name using branch names and the current timestamp.
     const now = new Date().getTime();
