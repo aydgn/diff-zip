@@ -32,7 +32,7 @@ Runtime Node.js support is exactly the `package.json` range: `>=23.5.0 || ^22.13
 - Archive changed regular files and symlinks; report Deleted Files separately. Skip changed gitlinks as submodules. Deletion-only and submodule-only runs return no ZIP but retain their reports.
 - Isolate archive Git configuration and attributes from the source repository and ambient environment. Disable `export-subst` to preserve blob bytes. Validate archive entries against requested Target paths; committed `export-ignore` must fail with `ARCHIVE_MISMATCH`, not silently omit files.
 - Publish a complete archive without overwriting any existing path. Collisions fail with `OUTPUT_EXISTS`; failures must leave no partial output or temporary directory.
-- Keep Turkish prompt wording and Base/Target terminology consistent with the prototype decisions in `.wayfinder/tickets/8-prototype-prompt-flow.md`. Keep operational deletion and submodule lists English, separate, and control-character-safe.
+- Keep Turkish prompt wording and Base/Target terminology consistent with `CONTEXT.md` and the existing prompts in `index.js`. Keep operational deletion and submodule lists English, separate, and control-character-safe.
 - Group branches by Local/Remote and sort by ref name. Exclude symbolic refs and the selected Base from Target choices; use the current branch as default only when selectable. Preserve full-ref identity when short names overlap.
 - Keep error codes stable at module boundaries. Let the CLI render terminal failures; helpers throw rather than exit.
 
@@ -46,4 +46,4 @@ When verification is assigned, run the suite once after all changes are integrat
 
 Preserve unrelated user changes. Use Conventional Commit messages and explain user-visible effects, verification evidence, and related issues in PR descriptions. Do not commit, tag, push, or publish unless explicitly assigned.
 
-The package is `git-diff-zip` on public npm; the release workflow needs the repository secret `NPM_TOKEN`. The package's `files` list includes `index.js` and `src/`; npm also includes standard package metadata and README. Keep internal `.wayfinder/`, prototypes, tests, and repository guidelines out of the runtime package.
+The package is `git-diff-zip` on public npm; the release workflow needs the repository secret `NPM_TOKEN`. The package's `files` list includes `index.js` and `src/`; npm also includes standard package metadata and README. Keep tests and repository guidelines out of the runtime package.

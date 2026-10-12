@@ -87,7 +87,7 @@ Rejecting confirmation or pressing Ctrl+C aborts without creating a ZIP. Prompts
 
 ## What goes into the Diff Zip
 
-Base and Target are resolved to commit SHA snapshots before comparison. Added, changed, and type-changed archiveable paths contain the **Target commit's bytes**, not files read from your working tree. Staged edits, unstaged edits, untracked files, your checked-out branch, and locally missing files do not supply archive contents. A dirty working tree is allowed; DiffZip does not check out branches or stash changes. See [ADR 0001](docs/adr/0001-zip-contents-from-target-tree.md) for the semantic decision.
+Base and Target are resolved to commit SHA snapshots before comparison. Added, changed, and type-changed archiveable paths contain the **Target commit's bytes**, not files read from your working tree. Staged edits, unstaged edits, untracked files, your checked-out branch, and locally missing files do not supply archive contents. A dirty working tree is allowed; DiffZip does not check out branches or stash changes.
 
 Rename detection is disabled: a rename is treated as deletion of the old path and addition of the new path. Deleted Files are never archived. Changed submodule entries are skipped because the ZIP cannot represent their contents; they appear in a separate report.
 
