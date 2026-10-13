@@ -1,6 +1,18 @@
 # Changelog
 
+## 3.0.2 - 2026-10-13
+
+### Changed
+- Publish from GitHub Actions through npm Trusted Publishing (OIDC), with job-scoped identity-token permission, Node 22 and npm 11; no stored npm token is required.
+- Include all fixes from the unpublished 3.0.1 tag while preserving existing Git tags.
+
+### Verification
+- `actionlint` validated the token-free workflow; frozen installation and all 117 tests passed with Node 22.23.3 and npm 11.21.0.
+- The 8-file 3.0.2 tarball and installed CLI were verified under Node 22: correct version, committed Target bytes, deletion reporting and dirty-checkout isolation.
+
 ## 3.0.1 - 2026-10-13
+
+Tagged but not published to npm; superseded by 3.0.2.
 
 ### Fixed
 - Preserve effective shared Git object stores, including environment-provided and relative alternates, while keeping source configuration and attributes isolated.

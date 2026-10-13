@@ -46,4 +46,4 @@ When verification is assigned, run the suite once after all changes are integrat
 
 Preserve unrelated user changes. Use Conventional Commit messages and explain user-visible effects, verification evidence, and related issues in PR descriptions. Do not commit, tag, push, or publish unless explicitly assigned.
 
-The package is `git-diff-zip` on public npm; the release workflow needs the repository secret `NPM_TOKEN`. The package's `files` list includes `index.js` and `src/`; npm also includes standard package metadata and README. Keep tests and repository guidelines out of the runtime package.
+The package is `git-diff-zip` on public npm; releases use npm Trusted Publishing (OIDC), configured as described in README's Release publishing section. Tag the publishing workflow with the release; no `NPM_TOKEN` is needed. The package's `files` list includes `index.js` and `src/`; npm also includes standard package metadata and README. Keep tests and repository guidelines out of the runtime package.

@@ -147,3 +147,18 @@ bun test
 ```
 
 The automated suite is in `tests/` and uses disposable Git repositories. See [AGENTS.md](AGENTS.md) for module boundaries and contributor invariants, and [changelog.md](changelog.md) for version history.
+
+## Release publishing
+
+Publishing a GitHub release runs `.github/workflows/publish.yml`: frozen dependency installation and tests, then npm publication through Trusted Publishing (OIDC) on a GitHub-hosted runner. The publishing job uses Node 22, npm 11 and `id-token: write`; no `NPM_TOKEN` secret is required. The package's supported runtime Node range is unchanged.
+
+In npm, open `git-diff-zip` → **Settings** → **Trusted publishing**, and configure GitHub Actions:
+
+| Field | Value |
+| --- | --- |
+| Organization or user | `aydgn` |
+| Repository | `diff-zip` |
+| Workflow filename | `publish.yml` |
+| Environment name | Empty (the workflow has no deployment environment) |
+
+The publisher must allow `npm publish`; its initial pending validation is completed by a successful publication. Use a new, unpublished package version and a tag containing the publishing workflow: release events run the workflow from that tag, not later changes on `main`. Publishing an already-published version fails. See [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) for current requirements.
