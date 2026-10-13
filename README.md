@@ -6,52 +6,30 @@ DiffZip creates a **Diff Zip** containing Changed Files as committed on a **Targ
 - **Target** represents what the destination should match after deployment.
 - **Deleted Files** are reported separately: a ZIP cannot remove files from the destination.
 
-## Requirements
+## Installation
 
-- Git on your `PATH`, with support for `git rev-parse --path-format` and `--show-object-format`.
-- Node.js matching `>=23.5.0 || ^22.13.0 || ^20.17.0` (the package's engine requirement).
-- Run from a Git working repository (its root or a subdirectory). Interactive mode needs at least two selectable local or remote-tracking branches; positional mode accepts resolvable commit refs even with only one local branch.
-- Required commit, tree, and file-content objects must already be available locally, including through shared object stores. A partial clone that has not downloaded the required content cannot produce a ZIP; DiffZip does not fetch missing objects.
-- Bun for local dependency installation and tests.
-
-## Run locally
-
-From this checkout:
-
-```bash
-bun install --frozen-lockfile
-node index.js
-node index.js main GM-12345
-node index.js --help
-node index.js --version
-```
-
-To compare branches in a different repository, run the entry point by absolute path from that repository's directory:
-
-```bash
-cd /path/to/deployment-repository
-node /path/to/diff-zip/index.js
-```
-
-The CLI writes the ZIP to the repository root, including when invoked from a repository subdirectory. Its entries use repository-relative paths.
-
-## Package installation
-
-The package is **`git-diff-zip`** on public npm. Run without a global installation, from the repository to compare:
+Run without installing, from the Git repository to compare:
 
 ```bash
 npx git-diff-zip
 npx git-diff-zip main GM-12345
 ```
 
-Alternatively, install globally:
+Or install globally:
 
 ```bash
 npm install -g git-diff-zip
 git-diff-zip
 ```
 
-## Command usage
+### Requirements
+
+- Node.js `>=23.5.0 || ^22.13.0 || ^20.17.0`.
+- Git on your `PATH`, with support for `git rev-parse --path-format` and `--show-object-format`.
+- A Git working repository (run from its root or any subdirectory). Interactive mode needs at least two selectable local or remote-tracking branches; positional mode accepts any resolvable commit refs, even with one local branch.
+- The compared commits and their file contents must already be available locally, including through shared object stores. DiffZip never fetches: remote refs must already be fetched, and a partial clone that lacks the required file contents cannot produce a ZIP.
+
+## Usage
 
 ```text
 git-diff-zip                 # Interactive Base/Target selection and confirmation
@@ -60,47 +38,46 @@ git-diff-zip --help          # Standalone help (-h also works)
 git-diff-zip --version       # Standalone package version
 ```
 
-With exactly two operands, the command runs synchronously to completion without selection or confirmation prompts, including with piped stdin or no TTY. **AI coding agents and scripts must use this positional form**, not the interactive form. Both modes use the same archive logic and human-readable reports.
-
-Base is the committed snapshot to compare **from** (typically the destination's current state); Target is the committed snapshot to compare **to**, whose bytes go into the ZIP. Operands can be local branch names, already-fetched remote-tracking refs, full refs, or commit refs such as a commit SHA or `HEAD~1`. The same ref may be used twice (no differences). Branch enumeration and the two-branch requirement apply only to interactive mode.
+Base is the committed snapshot to compare **from** (typically the destination's current state); Target is the committed snapshot to compare **to**, whose bytes go into the ZIP. Operands can be local branches, already-fetched remote-tracking refs, full refs, or any commit ref such as a SHA or `HEAD~1`. The same ref may be used twice (no differences).
 
 ```bash
-git-diff-zip
 git-diff-zip main GM-12345
 git-diff-zip origin/main origin/GM-12345
 git-diff-zip refs/heads/main refs/remotes/origin/GM-12345
 git-diff-zip HEAD~1 HEAD
-git-diff-zip --help
-git-diff-zip --version
 ```
 
-`--help` (or `-h`) prints comprehensive English help to stdout and exits 0; standalone `--version` prints the package version and exits 0. Both work outside a Git repository without requiring Git. Every other flag, a single operand, three or more operands, empty operands, operands starting with `-`, and help/version mixed with operands fail with `INVALID_ARGUMENTS` and a help hint before Git checks or prompts. There are no `--yes`, `--out`, `--json`, or other extra flags.
+With exactly two operands the command runs to completion without selection or confirmation prompts, including with piped stdin or no TTY. **Scripts and AI coding agents must use this positional form.** Agents should read `git-diff-zip --help` first, wait for the process to exit, then inspect the exit code and reports; exit 0 can mean no ZIP was created, and a created ZIP does not mean anything was deployed.
 
-### Interactive flow
+`--help` and `--version` print to stdout and exit 0, and work outside a Git repository. They must stand alone. Any other flag, an operand count other than zero or two, an empty operand, or an operand starting with `-` fails with `INVALID_ARGUMENTS` and a help hint before Git checks or prompts. There are no `--yes`, `--out`, `--json`, or other extra flags.
+
+The ZIP is written to the repository root, even when invoked from a subdirectory. Its entries use repository-relative paths.
+
+### Interactive mode
 
 1. Select **Base**: `Base - karşılaştırmanın başlangıç dalını seç`.
 2. Select **Target**: `Target - zip'e girecek dalı seç`.
 3. Confirm: `<Base> → <Target> farkı için zip oluşturulsun mu?`.
 
-Branches are grouped under **Local** and **Remote**, with each group sorted by ref name. Remote choices are already-fetched remote-tracking refs; DiffZip does not fetch. Symbolic remote HEAD refs are excluded. The current branch is the default when available; the selected Base is excluded from Target choices. Full refs distinguish choices even when short names overlap.
+Branches are grouped under **Local** and **Remote**, each sorted by ref name. Symbolic remote HEAD refs are excluded; the current branch is the default when available, and the selected Base is excluded from Target choices. Full refs keep choices distinct even when short names overlap.
 
-Rejecting confirmation or pressing Ctrl+C aborts without creating a ZIP. Prompts are Turkish; operational results and error messages are English.
+Rejecting confirmation or pressing Ctrl+C aborts without creating a ZIP. Prompts are Turkish; reports and error messages are English.
 
 ## What goes into the Diff Zip
 
-Base and Target are resolved to commit SHA snapshots before comparison. Added, changed, and type-changed archiveable paths contain the **Target commit's bytes**, not files read from your working tree. Staged edits, unstaged edits, untracked files, your checked-out branch, and locally missing files do not supply archive contents. A dirty working tree is allowed; DiffZip does not check out branches or stash changes.
+Base and Target are resolved to commit SHAs before comparison. Added, changed, and type-changed files contain the **Target commit's bytes**, never files read from your working tree: staged or unstaged edits, untracked files, the checked-out branch, and locally missing files do not affect the archive. A dirty working tree is allowed; DiffZip does not check out branches or stash changes.
 
-Rename detection is disabled: a rename is treated as deletion of the old path and addition of the new path. Deleted Files are never archived. Changed submodule entries are skipped because the ZIP cannot represent their contents; they appear in a separate report.
+Rename detection is disabled: a rename is a deletion of the old path plus an addition of the new path. Deleted Files are never archived. Changed submodules are skipped because a ZIP cannot represent them, and are reported separately.
 
-The archive operation uses an isolated bare repository sharing only Git objects, including the source's effective alternate object stores (persistent or environment-provided). Local index/worktree attributes, repository configuration, global attributes/configuration, and ambient `GIT_*` settings do not control archive behavior; only object-store locations are carried into the isolated archive. Committed `export-subst` is disabled to retain original blob bytes. If committed `export-ignore` excludes a required file, DiffZip fails with `ARCHIVE_MISMATCH` rather than producing an incomplete ZIP.
+Repository configuration, local attributes, and `GIT_*` environment settings cannot alter the archive, and `export-subst` is not expanded. If a committed `export-ignore` would omit a changed file, DiffZip fails with `ARCHIVE_MISMATCH` instead of producing an incomplete ZIP.
 
 ### Results and deployment
 
-- With archiveable Changed Files, the CLI reports `[SUCCESS] Diff Zip created: <path>`.
-- With no differences, it reports `[INFO] No differences found between <Base> and <Target>.` and creates no ZIP.
-- With only deletions or skipped submodules, it reports `[INFO] No archivable files; no Diff Zip created.` and still prints the applicable lists.
+- With archiveable Changed Files: `[SUCCESS] Diff Zip created: <path>`.
+- With no differences: `[INFO] No differences found between <Base> and <Target>.` and no ZIP.
+- With only deletions or skipped submodules: `[INFO] No archivable files; no Diff Zip created.` followed by the applicable lists.
 
-Deletion and submodule reports are separate operational lists, not hash or rename summaries:
+Deletions and submodules are reported as separate lists:
 
 ```text
 Deleted Files (not included in Diff Zip — remove manually from destination):
@@ -110,55 +87,29 @@ Submodules skipped (zip cannot represent submodule content):
   - vendor/library
 ```
 
-Paths containing control characters are quoted and escaped in reports. Review the Deleted Files and the archive entries together before deploying. Remove conflicting old files or directories **before** uploading their replacements: for example, if Base has a file named `assets` and Target has `assets/new.txt`, remove the old `assets` file first. Do not blindly apply deletion lists after uploading: a listed old file may now be a replacement directory containing newly deployed files. Remove other reported Deleted Files manually and handle skipped submodules separately. A Diff Zip is not a complete deployment or backup, and extracting it alone cannot make the destination match Target when deletions or submodules are involved.
+Paths containing control characters are quoted and escaped in reports.
 
-### Output safety and limits
+A Diff Zip is not a complete deployment or backup; extracting it alone cannot make the destination match Target when deletions or submodules are involved. Review the Deleted Files and the archive entries together before deploying, and remove conflicting old files or directories **before** uploading their replacements. For example, if Base has a file `assets` and Target has `assets/new.txt`, remove the old `assets` file first. Do not blindly apply deletion lists after uploading: a listed old path may now be a replacement directory containing newly deployed files. Handle skipped submodules separately.
 
-Names follow `<Base>-to-<Target>-YYYY-MM-DD-HHmm.zip`, using local time; `/` and `\` in branch names become `_`, and full-ref prefixes are removed. For example: `main-to-feature_checkout-2026-10-12-0930.zip`.
+### Output names and limits
 
-An existing output path fails with `OUTPUT_EXISTS`; it is never overwritten. If the generated filename exceeds 255 UTF-8 bytes, DiffZip falls back to `diff-<16-hex SHA256(Base NUL Target)>-YYYY-MM-DD-HHmm.zip` so publication succeeds on normal filesystems.
+ZIP names follow `<Base>-to-<Target>-YYYY-MM-DD-HHmm.zip` in local time; `/` and `\` in ref names become `_`, and `refs/heads/` or `refs/remotes/` prefixes are removed, for example `main-to-feature_checkout-2026-10-12-0930.zip`. Names over 255 UTF-8 bytes fall back to `diff-<16-hex hash>-YYYY-MM-DD-HHmm.zip`.
 
-Committed paths must be valid UTF-8. Non-UTF-8 filenames are rejected with `INVALID_DIFF` instead of producing corrupted deletion reports or invalid archives.
+An existing output path is never overwritten: it fails with `OUTPUT_EXISTS`, so repeating the same pair within the same minute can fail. Committed paths must be valid UTF-8; other filenames are rejected with `INVALID_DIFF`.
 
-Changed paths are passed to Git as command arguments, and the generated ZIP is buffered in memory. Very large path lists can exceed OS argument limits, and large archives can exhaust available memory. Windows behavior has not been verified.
+Changed paths are passed to Git as command arguments and the ZIP is buffered in memory, so very large path lists can exceed OS argument limits and very large archives can exhaust memory. Windows behavior has not been verified.
 
-## Agent workflow
+## Exit codes and streams
 
-1. Read the self-contained contract with `git-diff-zip --help`.
-2. From the Git repository to compare, run two explicit refs in Base/Target order, for example `git-diff-zip main GM-12345`. Wait for the process to exit; do not answer prompts or infer completion from an early output line.
-3. Inspect the exit code and stdout/stderr reports. Exit 0 may mean an archive, no changes, or a deletion/submodule-only comparison with no ZIP. Review all Deleted Files and skipped-submodule warnings before treating the comparison as handled.
-4. If deploying separately, review the ZIP's reported path and arrange manual destination deletions and separate submodule handling as needed. Successful archive creation **does not mean deployment happened**.
+- **0:** archive created, no differences, no archiveable files (including deletion-only or submodule-only results), interactive cancellation, `--help`, or `--version`.
+- **1:** invalid arguments, Git or repository failures, ref resolution failures, or archive failures (including output collisions).
+- **130:** SIGINT during active archive creation, after cleanup.
+- **143:** SIGTERM during active archive creation, after cleanup.
 
-### Exit codes and streams
+Cancellation before publication creates no ZIP; a ZIP that was already fully published is never removed.
 
-- **0:** successful archive creation, no differences, no archiveable files (including deletion-only/submodule-only results), interactive cancellation, standalone help, or standalone version.
-- **1:** invalid arguments, Git availability/repository failures, ref resolution failures, or archive failures (including output collisions).
-- **130:** SIGINT interruption during active archive creation, after child-process and temporary-file cleanup.
-- **143:** SIGTERM interruption during active archive creation, after child-process and temporary-file cleanup.
+Stdout contains reports, help, and version output; stderr contains errors. There is no JSON or machine-readable output contract. DiffZip does not deploy files or delete anything from the destination.
 
-Stdout contains human-readable operational reports, help, and version output; stderr contains errors. There is no JSON or machine-readable output contract. DiffZip does not fetch, check out refs, stash changes, deploy files, or automatically delete destination files.
+## Contributing
 
-Cancellation before publication creates no ZIP. Atomic publication of a complete ZIP is the commit boundary: cancellation never removes an already-published archive.
-
-## Development
-
-```bash
-bun test
-```
-
-The automated suite is in `tests/` and uses disposable Git repositories. See [AGENTS.md](AGENTS.md) for module boundaries and contributor invariants, and [changelog.md](changelog.md) for version history.
-
-## Release publishing
-
-Publishing a GitHub release runs `.github/workflows/publish.yml`: frozen dependency installation and tests, then npm publication through Trusted Publishing (OIDC) on a GitHub-hosted runner. The publishing job uses Node 22, npm 11 and `id-token: write`; no `NPM_TOKEN` secret is required. The package's supported runtime Node range is unchanged.
-
-In npm, open `git-diff-zip` → **Settings** → **Trusted publishing**, and configure GitHub Actions:
-
-| Field | Value |
-| --- | --- |
-| Organization or user | `aydgn` |
-| Repository | `diff-zip` |
-| Workflow filename | `publish.yml` |
-| Environment name | Empty (the workflow has no deployment environment) |
-
-The publisher must allow `npm publish`; its initial pending validation is completed by a successful publication. Use a new, unpublished package version and a tag containing the publishing workflow: release events run the workflow from that tag, not later changes on `main`. Publishing an already-published version fails. See [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) for current requirements.
+Development setup, module boundaries, and the release process are in [AGENTS.md](AGENTS.md). Version history is in [changelog.md](changelog.md).
