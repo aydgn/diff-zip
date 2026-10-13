@@ -1,4 +1,4 @@
-import { Separator } from "@inquirer/prompts";
+import { Separator } from "@inquirer/select";
 
 export const buildBranchChoices = ({ local, remote }, description, excludedRef) => {
   const choices = [];

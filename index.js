@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { readFile } from "node:fs/promises";
-import { confirm, select } from "@inquirer/prompts";
+import confirm from "@inquirer/confirm";
+import select from "@inquirer/select";
 import { checkGitInstalled, checkGitRepo, getBranches } from "./src/gitUtils.js";
 import { createDiffZip } from "./src/core.js";
 import { buildBranchChoices, formatReportPath, printDiffReport } from "./src/cliUtils.js";
@@ -50,7 +51,9 @@ Requirements and output:
   Repository/worktree attribute overrides are ignored; committed export-ignore
   remains effective and fails ARCHIVE_MISMATCH if changed files are omitted.
   There is no fetch, checkout, stash, deployment, or automatic deletion of
-  repository/deployment files. Remote refs must already exist locally.
+  repository/deployment files. Required committed objects and file content
+  must already be local; shared object stores are supported. Remote refs
+  must already exist locally.
   Deleted paths are reported for manual removal; renames are deletion + addition.
   Changed submodules are skipped and reported; their contents are not archived.
   No differences or deletion-only changes succeed without creating a ZIP;
@@ -79,8 +82,10 @@ Examples:
 
 Agent workflow:
   First run git-diff-zip --help. Then run git-diff-zip BASE TARGET with explicit
-  refs, wait for completion, and inspect the exit code and reports. Review all
-  deletion and skipped-submodule warnings. Success means archived, not deployed.`;
+  refs, wait for completion, and inspect the exit code and reports. Review
+  deletion and skipped-submodule warnings. Remove conflicting old files/dirs
+  from the destination BEFORE installing Target replacements. Never blindly
+  delete replacement directories afterwards. Success means archived, not deployed.`;
 
 const main = async () => {
   try {
@@ -166,7 +171,7 @@ const main = async () => {
     if (result.zipPath) {
       console.log(`[SUCCESS] Diff Zip created: ${formatReportPath(result.zipPath)}`);
     } else if (result.deleted.length === 0 && result.skipped.length === 0) {
-      console.log(`[INFO] No differences found between ${baseName} and ${targetName}.`);
+      console.log(`[INFO] No differences found between ${formatReportPath(baseName)} and ${formatReportPath(targetName)}.`);
     } else {
       console.log("[INFO] No archivable files; no Diff Zip created.");
     }

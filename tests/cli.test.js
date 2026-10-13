@@ -267,6 +267,21 @@ test("distinct refs with identical snapshots succeed without a ZIP", async () =>
   expect((await readdir(fixture.cwd)).filter(name => name.endsWith(".zip"))).toEqual([]);
 });
 
+test("multiline commit-message refs stay escaped on one no-differences report line", async () => {
+  const fixture = await makeFixtureRepo({ base: { "file.txt": "same bytes" } });
+  await commit(fixture.cwd, "target\ncontinuation");
+  const multilineRef = "HEAD^{/target\ncontinuation}";
+  for (const refs of [["HEAD", multilineRef], [multilineRef, "HEAD"]]) {
+    const result = await runCli(refs, fixture.cwd);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trimEnd().split("\n")).toHaveLength(1);
+    expect(result.stdout).toContain('"HEAD^{/target\\ncontinuation}"');
+    expect(result.stdout).not.toContain(multilineRef);
+    expect((await readdir(fixture.cwd)).filter(name => name.endsWith(".zip"))).toEqual([]);
+  }
+});
+
 test("deletion-only positional mode reports escaped paths on stdout without a ZIP", async () => {
   const fixture = await makeFixtureRepo({ base: { "old\nname.txt": "old" }, target: { "old\nname.txt": null } });
   const result = await runCli(["main", "feature"], fixture.cwd);

@@ -11,6 +11,7 @@ DiffZip creates a **Diff Zip** containing Changed Files as committed on a **Targ
 - Git on your `PATH`, with support for `git rev-parse --path-format` and `--show-object-format`.
 - Node.js matching `>=23.5.0 || ^22.13.0 || ^20.17.0` (the package's engine requirement).
 - Run from a Git working repository (its root or a subdirectory). Interactive mode needs at least two selectable local or remote-tracking branches; positional mode accepts resolvable commit refs even with only one local branch.
+- Required commit, tree, and file-content objects must already be available locally, including through shared object stores. A partial clone that has not downloaded the required content cannot produce a ZIP; DiffZip does not fetch missing objects.
 - Bun for local dependency installation and tests.
 
 ## Run locally
@@ -91,7 +92,7 @@ Base and Target are resolved to commit SHA snapshots before comparison. Added, c
 
 Rename detection is disabled: a rename is treated as deletion of the old path and addition of the new path. Deleted Files are never archived. Changed submodule entries are skipped because the ZIP cannot represent their contents; they appear in a separate report.
 
-The archive operation uses an isolated bare repository sharing only Git objects. Local index/worktree attributes, repository configuration, global attributes/configuration, and ambient `GIT_*` variables do not control the archive operation. Committed `export-subst` is disabled to retain original blob bytes. If committed `export-ignore` excludes a required file, DiffZip fails with `ARCHIVE_MISMATCH` rather than producing an incomplete ZIP.
+The archive operation uses an isolated bare repository sharing only Git objects, including the source's effective alternate object stores (persistent or environment-provided). Local index/worktree attributes, repository configuration, global attributes/configuration, and ambient `GIT_*` settings do not control archive behavior; only object-store locations are carried into the isolated archive. Committed `export-subst` is disabled to retain original blob bytes. If committed `export-ignore` excludes a required file, DiffZip fails with `ARCHIVE_MISMATCH` rather than producing an incomplete ZIP.
 
 ### Results and deployment
 
@@ -109,7 +110,7 @@ Submodules skipped (zip cannot represent submodule content):
   - vendor/library
 ```
 
-Paths containing control characters are quoted and escaped in reports. Upload the archive's files as appropriate for your deployment, then manually remove the reported Deleted Files from the destination. Handle skipped submodules separately. A Diff Zip is not a complete deployment or backup, and extracting it alone cannot make the destination match Target when deletions or submodules are involved.
+Paths containing control characters are quoted and escaped in reports. Review the Deleted Files and the archive entries together before deploying. Remove conflicting old files or directories **before** uploading their replacements: for example, if Base has a file named `assets` and Target has `assets/new.txt`, remove the old `assets` file first. Do not blindly apply deletion lists after uploading: a listed old file may now be a replacement directory containing newly deployed files. Remove other reported Deleted Files manually and handle skipped submodules separately. A Diff Zip is not a complete deployment or backup, and extracting it alone cannot make the destination match Target when deletions or submodules are involved.
 
 ### Output safety and limits
 
@@ -132,8 +133,12 @@ Changed paths are passed to Git as command arguments, and the generated ZIP is b
 
 - **0:** successful archive creation, no differences, no archiveable files (including deletion-only/submodule-only results), interactive cancellation, standalone help, or standalone version.
 - **1:** invalid arguments, Git availability/repository failures, ref resolution failures, or archive failures (including output collisions).
+- **130:** SIGINT interruption during active archive creation, after child-process and temporary-file cleanup.
+- **143:** SIGTERM interruption during active archive creation, after child-process and temporary-file cleanup.
 
 Stdout contains human-readable operational reports, help, and version output; stderr contains errors. There is no JSON or machine-readable output contract. DiffZip does not fetch, check out refs, stash changes, deploy files, or automatically delete destination files.
+
+Cancellation before publication creates no ZIP. Atomic publication of a complete ZIP is the commit boundary: cancellation never removes an already-published archive.
 
 ## Development
 

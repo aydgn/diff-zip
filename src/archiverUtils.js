@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { link, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { devNull } from "node:os";
-import { join } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { executeCommand, codedError } from "./utils.js";
 
 export const buildZipName = (base, target, date) => {
@@ -47,6 +47,10 @@ const archiveEntries = bytes => {
   return files;
 };
 
+// Git accepts C-style octal escapes here, not JSON's \uXXXX escapes.
+const quoteObjectPath = path => `"${path.replace(/[\\"]/g, "\\$&").replace(/[\u0000-\u001f\u007f]/g,
+  character => `\\${character.charCodeAt(0).toString(8).padStart(3, "0")}`)}"`;
+
 export const archiveCommittedFiles = async ({ commit, paths, cwd, outDir, name, signal }) => {
   signal?.throwIfAborted();
   const zipPath = join(outDir, name);
@@ -58,6 +62,13 @@ export const archiveCommittedFiles = async ({ commit, paths, cwd, outDir, name, 
       signal?.throwIfAborted();
       const repository = join(temporary, "repository.git");
       const objects = await executeCommand("git", ["rev-parse", "--path-format=absolute", "--git-path", "objects"], { cwd, signal });
+      // Resolve every effective alternate in the source cwd before entering the isolated repository.
+      const alternates = (await executeCommand("git", ["count-objects", "-v"], { cwd, signal })).split("\n")
+        .filter(line => line.startsWith("alternate: "))
+        .map(line => {
+          const path = line.slice("alternate: ".length);
+          return path.startsWith("\"") ? path : quoteObjectPath(path);
+        });
       const format = await executeCommand("git", ["rev-parse", "--show-object-format"], { cwd, signal });
       const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
       env.GIT_CONFIG_NOSYSTEM = "1";
@@ -70,7 +81,7 @@ export const archiveCommittedFiles = async ({ commit, paths, cwd, outDir, name, 
       // Keep committed export-ignore, but archive original blobs without $Format$ substitutions.
       await writeFile(join(repository, "info", "attributes"), "* -export-subst\n", { flag: "wx", signal });
       signal?.throwIfAborted();
-      env.GIT_ALTERNATE_OBJECT_DIRECTORIES = JSON.stringify(objects.replace(/\r?\n$/, ""));
+      env.GIT_ALTERNATE_OBJECT_DIRECTORIES = [quoteObjectPath(resolve(cwd ?? process.cwd(), objects.replace(/\n$/, ""))), ...alternates].join(delimiter);
       // Only objects are shared: source config, index, worktree and info attributes are isolated.
       bytes = await executeCommand("git", ["--git-dir", repository, "-c", `core.attributesFile=${devNull}`, "--literal-pathspecs", "archive", "--format=zip", "-9", commit, "--", ...paths], { cwd: temporary, env, encoding: null, signal });
     } catch (cause) {

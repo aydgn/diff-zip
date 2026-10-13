@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.0.1 - 2026-10-13
+
+### Fixed
+- Preserve effective shared Git object stores, including environment-provided and relative alternates, while keeping source configuration and attributes isolated.
+- Use Git-compatible control-byte quoting for object paths so valid control-character repository directories can be archived.
+- Escape multiline Base/Target commit expressions in no-differences reports.
+- Correct deployment instructions: remove conflicting old files/directories before replacements, and never blindly delete replacement directories after uploading.
+
+### Changed
+- Replace the prompt umbrella with direct `@inquirer/confirm` and `@inquirer/select` dependencies, removing 13 unused installed packages without changing prompts or Node support.
+- Skip Target tree loading for no-difference and deletion-only comparisons.
+- Document required local committed objects, partial-clone missing-content failures, cancellation exits 130/143, and the complete-archive publication boundary.
+
+### Tests
+- Cover object-store isolation, control-character roots, competing writers, cancellation during a real active Git archive, no-fetch partial-clone failure cleanup, and multiline commit-expression reporting.
+
+### Verification
+- Integrated suite: 117 tests across 6 files, 0 failures, 460 expectations; affected source and test diagnostics were clear.
+- Frozen dependency installation made no changes; the dependency audit reported no advisories.
+- Real Node CLI and eight PTY scenarios passed, including narrow terminals, cancellation, committed bytes, escaped reports and no-overwrite collisions.
+- Verified environment-only shared stores and control-character roots together through the CLI; Git traces confirmed no Target tree scan for 50,000 unchanged files or deletion-only comparisons.
+- Disposable package installation passed installed-binary help/version, positional archiving and interactive confirmation rejection; macOS/Node 26 only, with Windows and minimum supported Node releases unverified.
+
 ## 3.0.0 - 2026-10-12
 
 Published to public npm as `git-diff-zip`.

@@ -1,6 +1,6 @@
 {
   "name": "git-diff-zip",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Creates ZIP file with the difference between two git branches.",
   "type": "module",
   "main": "index.js",
@@ -29,6 +29,7 @@
   },
   "files": ["index.js", "src/"],
   "dependencies": {
-    "@inquirer/prompts": "^8.7.0"
+    "@inquirer/confirm": "^6.3.3",
+    "@inquirer/select": "^5.2.6"
   }
 }

@@ -16,7 +16,7 @@ export const createDiffZip = async ({ base, target, cwd = process.cwd(), outDir 
     const output = await executeCommand("git", ["--no-replace-objects", "diff", "--name-status", "-z", "--no-renames", "--ignore-submodules=none", baseCommit, targetCommit, "--"], { cwd: root, encoding: null, signal });
     signal?.throwIfAborted();
     diff = parseNameStatus(output);
-    tree = await getTreeEntries(targetCommit, root, signal);
+    if (diff.changed.length) tree = await getTreeEntries(targetCommit, root, signal);
   } catch (cause) {
     signal?.throwIfAborted();
     if (cause.name === "AbortError" || cause.code === "INVALID_DIFF") throw cause;
